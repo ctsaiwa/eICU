@@ -1,0 +1,40 @@
+SELECT @TSQL = 
+			N'INSERT INTO #VENT_ICU_Labs_Stg
+				(	encntr_id ,
+					event_end_dt_tm,
+					lab_type ,
+					code_value,
+					lab_result,
+					lab_result_unit,
+					normalcy_ind
+				)
+			SELECT * FROM OPENQUERY(ORACLE_CERNERP1592, 
+			''SELECT 
+				ce.encntr_id, 
+				CCLSQL_CNVTDATETIMEUTC(CE.EVENT_END_DT_TM, 2, 145) event_end_dt_tm, 
+				PI_GET_cv_display(ce.event_cd), 
+				ce.event_cd,
+				substr(CE.RESULT_VAL, 1, 20),
+				PI_GET_CV_DISPLAY(CE.RESULT_UNITS_CD) "result_units_disp",
+				PI_GET_CV_DESC(CE.NORMALCY_CD) NORMALCY_IND
+      
+				from  CLINICAL_EVENT CE
+
+				WHERE 
+				 ce.event_cd in (' + @listOfCodeValue + ')
+				 and ce.encntr_id = ' + @e_enc + '
+				 and ((
+					ce.event_end_dt_tm >= CCLSQL_CNVTDATETIMEUTC(to_date(''''' + @icu_st_chr + ''''', ''''YYYY-MM-DD HH24:MI:SS'''') , 1, 145)
+					and ce.event_end_dt_tm <= CCLSQL_CNVTDATETIMEUTC(to_date(''''' + @icu_24h_chr + ''''', ''''YYYY-MM-DD HH24:MI:SS'''') , 1, 145)
+					) or
+					(
+					ce.event_end_dt_tm >= CCLSQL_CNVTDATETIMEUTC(to_date(''''' + @rptst_date + ''''', ''''YYYY-MM-DD HH24:MI:SS'''') , 1, 145)
+					))
+				 and CE.RESULT_STATUS_CD in (26,35,24) -- (AUTH,MODIFIED,MODIFIED2) 
+				 and CE.EVENT_CLASS_CD <> 1266803  --Place Holder	
+				 and CE.VIEW_LEVEL <> 0 
+				 and CE.RECORD_STATUS_CD = 186
+				 and ce.valid_until_dt_tm > CCLSQL_CNVTDATETIMEUTC(sysdate, 1, 145)
+				 and not(regexp_like(CE.RESULT_VAL, ''''[a-z,A-Z]''''))
+			''
+			)';
