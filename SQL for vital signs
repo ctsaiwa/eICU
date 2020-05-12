@@ -1,0 +1,30 @@
+set @TSQL_icu_vals = 
+'SELECT
+    ce.encntr_id, 
+   	CE.EVENT_END_DT_TM,
+    event_cd, 
+    PI_GET_cv_display(ce.event_cd) display, 
+    substr(CE.RESULT_VAL, 1, 20) result,
+    PI_GET_CV_DISPLAY(CE.RESULT_UNITS_CD) result_unit,
+    to_date(''' + @vICUStartDT  + ''',''MON DD YYYY HH:MI AM'') as icu_start_dt_tm,
+    to_date(''' + @vICUStart24DT  + ''',''MON DD YYYY HH:MI AM'') as icu_start_24_dt_tm,
+	PI_GET_CV_DESC(CE.NORMALCY_CD) NORMALCY_IND,
+	CE.VALID_FROM_DT_TM
+from
+ cust_utc.vw_clinical_event ce
+WHERE ce.encntr_id = '+ @vencntr_id + '
+ and  ce.event_cd in ('+ @listOfEvents + ')
+ and  ce.valid_until_dt_tm > sysdate 
+ and  CE.RESULT_STATUS_CD in (26,35,24) -- (AUTH,MODIFIED,MODIFIED2) 
+ and  CE.EVENT_CLASS_CD <> 1266803  --Place Holder	
+ and  CE.VIEW_LEVEL <> 0 
+ AND  CE.RECORD_STATUS_CD = 186
+ --AND  CE.EVENT_CLASS_CD + 0 = 229 --include only NUM values  COMMENTED OUT TO ALLOW Ox THerapy
+ AND (
+       (     ce.event_end_dt_tm >= to_date(''' + @vICUStartDT  + ''',''MON DD YYYY HH:MI AM'')
+        AND  ce.event_end_dt_tm <= to_date(''' + @vICUStart24DT  + ''',''MON DD YYYY HH:MI AM'')
+	   )
+      OR
+	   ( ce.event_end_dt_tm >= sysdate -2 and ce.event_end_dt_tm <= sysdate )
+	 )	
+' 
